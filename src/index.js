@@ -46,18 +46,19 @@ app.post('/users', (request, response) => {
 });
 
 app.get('/todos', checksExistsUserAccount, (request, response) => {
+  const { username } = request.headers;
 
-  const { username } = request;
+  const todos = users.find(user => user.username === username).todos;
 
-  return response.status(200).json(username.todos);
+  return response.status(200).json(todos);
 });
 
 app.post('/todos', checksExistsUserAccount, (request, response) => {
   const { title, deadline } = request.body;
-  const { username } = request;
+  const { username } = request.headers;
 
   const newTodo = {
-    id: uuidv4(), // precisa ser um uuid
+    id: uuidv4(), 
     title,
     done: false,
     deadline: new Date(deadline),
@@ -66,54 +67,64 @@ app.post('/todos', checksExistsUserAccount, (request, response) => {
 
   users.find(user => user.username === username).todos.push(newTodo);
 
-  return response.status(200).send();
+  return response.status(201).json(newTodo);
 });
 
-app.put('/todos/:id', checksExistsUserAccount, (request, response) => {
-  const { username } = request;
+app.put('/todos/:id', (request, response) => {
   const { title, deadline } = request.body;
   const { id } = request.params;
+  const { username } = request.headers;
 
   const toModifyTodo = users.find(user => user.username === username).todos.find(todo => todo.id === id);
 
   if(!toModifyTodo) {
-    return response.status(400).json({ error: 'Mensagem do erro' });
+    return response.status(404).json({ error: 'Mensagem do erro' });
   }
 
   users.find(user => user.username === username).todos.find(todo => todo.id === id).title = title;
   users.find(user => user.username === username).todos.find(todo => todo.id === id).deadline = deadline;
 
-  return response.status(200).send();
+  const modifiedTodo = users.find(user => user.username === username).todos.find(todo => todo.id === id);
+
+  return response.status(200).json(modifiedTodo);
 });
 
-app.patch('/todos/:id/done', checksExistsUserAccount, (request, response) => {
-  const { username } = request;
+app.patch('/todos/:id/done', (request, response) => {
+  const { username } = request.headers;
   const { id } = request.params;
 
   const toCheckAsDoneTodo = users.find(user => user.username === username).todos.find(todo => todo.id === id);
 
   if(!toCheckAsDoneTodo) {
-    return response.status(400).json({ error: 'Mensagem do erro' });
+    return response.status(404).json({ error: 'Mensagem do erro' });
   }
 
   users.find(user => user.username === username).todos.find(todo => todo.id === id).done = true;
 
+  const todo = users.find(user => user.username === username).todos.find(todo => todo.id === id);
 
+  return response.status(200).json(todo);
 });
 
-app.delete('/todos/:id', checksExistsUserAccount, (request, response) => {
-  const { username } = request;
+app.delete('/todos/:id', (request, response) => {
   const { id } = request.params;
+  const { username } = request.headers;
 
-  const toDeleteTodoIndex = users.find(user => user.username === username).todos.findIndex(todo => todo.id === id);
+  const user = users.find(user => user.username === username);
 
-  if(!toDeleteTodoIndex) {
-    return response.status(400).json({ error: 'Mensagem do erro' });
+  const todos = user.todos;
+
+  const todoIndex = todos.findIndex(todo => todo.id === id);
+
+  if(todoIndex === -1) {
+    return response.status(404).json({ error: 'Mensagem do erro' });
   }
 
-  users.find(user => user.username === username).todos.splice(toDeleteTodoIndex, 1);
+  users.find(user => user.username === username).todos.splice(todoIndex, 1);
 
-  return response.status(200).send();
+  const newUserTodos = users.find(user => user.username === username).todos;
+
+  return response.status(204).json(newUserTodos);
 });
 
 module.exports = app;
